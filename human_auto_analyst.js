@@ -1,0 +1,65 @@
+/* Ver.0.42 Human Playtest Auto Analyst. Read-only analysis; never changes rules, cards, Core, or AI. */
+(function(){'use strict';
+const REPORT_KEY='tactics7_human_auto_reports_v042';
+const AI=window.HumanPlaytestLab?.AI_BASELINE||{Kingdom:69.48,Forest:45.95,Arcane:39.93,Nether:46.42,Mechanica:57.04,Abyss:41.35,first:49.01,rangedDamageShare:16.02,playerTurn8to11:65.2};
+const cards=()=>window.RULES?.cards||{}, classes=()=>window.RULES?.classes||{};
+const pct=(n,d)=>d?100*n/d:null, round=(v,n=2)=>Number.isFinite(v)?+v.toFixed(n):null;
+const q=(a,p)=>{if(!a.length)return null;let s=[...a].sort((x,y)=>x-y),i=(s.length-1)*p,l=Math.floor(i),h=Math.ceil(i);return round(s[l]+(s[h]-s[l])*(i-l),0)};
+const rate=(wins,games)=>({wins,games,ratePct:round(pct(wins,games))});
+const confidence=(n,effect=0)=>n<5?'データ不足':n<15?'参考':n>=30&&effect>=10?'強い兆候':n>=15&&effect>=7?'要注意':'参考';
+const inc=(o,k,n=1)=>o[k||'unknown']=(o[k||'unknown']||0)+n;
+const group=(rows,key)=>{let out={};for(const r of rows)(out[key(r)||'unknown']??=[]).push(r);return out};
+const isWin=m=>m.result?.humanResult==='win';
+const cardName=id=>cards()[id]?.name||id||'unknown';
+function versions(matches){let keys=['gameVersion','cardSetVersion','coreVersion','logSchemaVersion'],out={};for(const k of keys)out[k]=[...new Set(matches.map(m=>m[k]).filter(Boolean))].sort();return out}
+function filter(matches,f={}){return (matches||[]).filter(m=>['gameVersion','cardSetVersion','coreVersion','logSchemaVersion'].every(k=>!f[k]||f[k]==='all'||m[k]===f[k]))}
+function rowsStats(rows){let wins=rows.filter(isWin).length;return{...rate(wins,rows.length),confidence:confidence(rows.length,Math.abs((pct(wins,rows.length)||50)-50))}}
+function testerBalanced(rows){let groups=group(rows,m=>m.testerId),rates=Object.values(groups).map(v=>v.filter(isWin).length/v.length);return{testers:rates.length,winRatePct:rates.length?round(100*rates.reduce((a,b)=>a+b,0)/rates.length):null,note:'各Testerの勝率を同じ重みで平均'}}
+function actionCard(d){let a=d.chosenAction||{};if(a.cardId)return a.cardId;if(a.unitId)return d.state?.board?.find(u=>u.id===a.unitId)?.cardId||null;return null}
+function outcomeSuccess(d){let o=d.outcome||[];return{damage:o.filter(x=>x.type==='damage').reduce((n,x)=>n+(x.amount||0),0),commanderDamage:o.filter(x=>x.type==='damage'&&x.commander).reduce((n,x)=>n+(x.amount||0),0),downs:o.filter(x=>x.type==='down').length,moves:o.filter(x=>x.type==='move').length}}
+function analyze(matches,filters={}){
+ let all=filter(matches,filters),valid=all.filter(m=>m?.result&&m?.source==='human_playtest'),testers=group(valid,m=>m.testerId),classGroups=group(valid,m=>m.human?.classId),deckGroups=group(valid,m=>m.human?.deckId),firstGroups=group(valid,m=>m.firstSide==='player'?'first':'second');
+ let endDist={},actions={},cardsUsed={},cardMatchWins={},evolves={},summon={front:0,back:0,rangedFront:0,rangedBack:0,drag:0,click:0},times=[],timeByAction={},timeByCard={},timeByTurn={},details={},cancel={cancel:0,dragCancel:0,byCard:{},byMode:{},byPosition:{}},surveys=[],commander={damageEvents:0,damage:0},ranged={summons:0,back:0,survivalSamples:[],shots:0,commanderDamage:0};
+ let evoEvents=[];
+ for(const m of valid){inc(endDist,m.result.endPlayerTurn);let matchCards=new Set();
+  for(const d of m.decisions||[]){let a=d.chosenAction||{},t=a.type||'unknown',cid=actionCard(d),s=outcomeSuccess(d);inc(actions,t);if(cid){inc(cardsUsed,cid);matchCards.add(cid)}
+   if(Number.isFinite(d.decisionTimeMs)){let rec={ms:d.decisionTimeMs,action:t,cardId:cid,playerTurn:d.state?.playerTurn,matchId:m.matchId};times.push(rec);(timeByAction[t]??=[]).push(rec.ms);if(cid)(timeByCard[cid]??=[]).push(rec.ms);inc(timeByTurn,d.state?.playerTurn,rec.ms)}
+   if(t==='summon'){let c=cards()[a.cardId],cl=classes()[c?.classId],front=a.y===4,isRanged=!!(cl?.range>=2);summon[front?'front':'back']++;summon[a.inputMethod==='drag'?'drag':'click']++;if(isRanged){summon[front?'rangedFront':'rangedBack']++;ranged.summons++;ranged.back+=!front}}
+   if(t==='attack'||t==='charge'){let u=d.state?.board?.find(x=>x.id===a.unitId),cl=classes()[u?.classId];if(cl?.range>=2){ranged.shots++;ranged.commanderDamage+=s.commanderDamage}}
+   if(t==='evolve'){let u=d.state?.board?.find(x=>x.id===a.unitId),id=u?.cardId||'unknown';inc(evolves,id);evoEvents.push({matchId:m.matchId,cardId:id,playerTurn:d.state?.playerTurn,...s,won:isWin(m)})}
+   commander.damageEvents+=s.commanderDamage>0;commander.damage+=s.commanderDamage;
+  }
+  for(const cid of matchCards){let x=cardMatchWins[cid]??={matches:0,wins:0};x.matches++;x.wins+=isWin(m)}
+  for(const e of m.uiEvents||[]){if(e.type==='cardDetailOpen'){let x=details[e.cardId]??={opens:0,evolvedTab:0,matches:new Set(),beforeUse:0};x.opens++;x.evolvedTab+=e.tab==='evolved';x.matches.add(m.matchId);let firstUse=(m.decisions||[]).find(d=>actionCard(d)===e.cardId);if(!firstUse||new Date(e.timestamp)<=new Date(firstUse.wallTime))x.beforeUse++}if(e.type==='cancel'||e.type==='dragCancel'){cancel[e.type]++;if(e.cardId)inc(cancel.byCard,e.cardId);if(e.mode)inc(cancel.byMode,e.mode);if(e.x!=null)inc(cancel.byPosition,`${e.x},${e.y}`)}}
+  if(m.survey)surveys.push({...m.survey,classId:m.human?.classId,won:isWin(m)});
+ }
+ for(const [id,x] of Object.entries(cardMatchWins))Object.assign(x,{winRatePct:round(pct(x.wins,x.matches)),cardName:cardName(id)});
+ let cleanTimes=times.filter(x=>x.ms<=60000),timeSummary=a=>({count:a.length,medianMs:q(a,.5),p75Ms:q(a,.75),p90Ms:q(a,.9)}),timeAction={},timeCard={};for(const [k,v] of Object.entries(timeByAction))timeAction[k]=timeSummary(v.filter(x=>x<=60000));for(const [k,v] of Object.entries(timeByCard))timeCard[k]={cardName:cardName(k),...timeSummary(v.filter(x=>x<=60000))};
+ let detailOut={};for(const [id,x] of Object.entries(details))detailOut[id]={cardName:cardName(id),opens:x.opens,matches:x.matches.size,perMatch:round(x.opens/valid.length),beforeUse:x.beforeUse,evolvedTab:x.evolvedTab};
+ let byClass={};for(const [id,rows] of Object.entries(classGroups)){let h=rowsStats(rows),ai=AI[id];byClass[id]={...h,aiWinRatePct:ai??null,differencePctPoints:Number.isFinite(ai)?round(h.ratePct-ai):null,testerBalancedWinRatePct:testerBalanced(rows).winRatePct}}
+ let byDeck={};for(const [id,rows] of Object.entries(deckGroups))byDeck[id]={...rowsStats(rows),testerBalancedWinRatePct:testerBalanced(rows).winRatePct};
+ let byTester={};for(const [id,rows] of Object.entries(testers))byTester[id]=rowsStats(rows);
+ let first={};for(const [id,rows] of Object.entries(firstGroups))first[id]=rowsStats(rows);
+ let fun=surveys.map(x=>+x.fun).filter(Number.isFinite),clarity=surveys.map(x=>+x.clarity).filter(Number.isFinite),play=surveys.filter(x=>x.playAgain==='yes'||x.playAgain==='no'),dist=a=>a.reduce((o,n)=>(inc(o,n),o),{});
+ let survey={responses:surveys.length,fun:{mean:fun.length?round(fun.reduce((a,b)=>a+b,0)/fun.length):null,distribution:dist(fun)},clarity:{mean:clarity.length?round(clarity.reduce((a,b)=>a+b,0)/clarity.length):null,distribution:dist(clarity)},playAgain:{yes:play.filter(x=>x.playAgain==='yes').length,total:play.length,ratePct:round(pct(play.filter(x=>x.playAgain==='yes').length,play.length))},comments:surveys.filter(x=>x.comment||x.balanceCard).map(x=>({classId:x.classId,won:x.won,balanceCard:x.balanceCard||'',comment:x.comment||''}))};
+ let core={totalMatches:all.length,validMatches:valid.length,testers:Object.keys(testers).length,testerMatches:Object.fromEntries(Object.entries(testers).map(([k,v])=>[k,v.length])),byTester,human:rowsStats(valid),cpu:rate(valid.length-valid.filter(isWin).length,valid.length),first,byClass,byDeck,playerTurnDistribution:endDist,playerTurn8to11:rate(valid.filter(m=>m.result.endPlayerTurn>=8&&m.result.endPlayerTurn<=11).length,valid.length),playerTurn15Reached:rate(valid.filter(m=>m.result.endPlayerTurn>=15).length,valid.length),commander,matchWeightedWinRatePct:round(pct(valid.filter(isWin).length,valid.length)),testerBalanced:testerBalanced(valid)};
+ let candidates=makeCandidates({valid,core,survey,byClass,cardMatchWins,detailOut,cancel,timeCard,timeAction,summon,ranged});
+ let report={schema:'tactics7-human-auto-report-0.42',generatedAt:new Date().toISOString(),filters,versions:versions(matches||[]),sampleWarning:valid.length<20?'Human sample is still small：強い調整判断には使用しないでください。':null,core,actions,cardUsage:Object.fromEntries(Object.entries(cardsUsed).map(([id,n])=>[id,{cardName:cardName(id),uses:n,...(cardMatchWins[id]||{})}])),evolution:{targets:Object.fromEntries(Object.entries(evolves).map(([id,n])=>[id,{cardName:cardName(id),uses:n}])),events:evoEvents},summon,ranged,decisionTime:{all:timeSummary(cleanTimes.map(x=>x.ms)),excludedOver60s:times.length-cleanTimes.length,byAction:timeAction,byCard:timeCard},cardDetail:detailOut,cancel,survey,candidates,aiComparison:{classes:byClass,aiFirstWinRatePct:AI.first??null,aiPlayerTurn8to11Pct:AI.playerTurn8to11??null,ranged:{humanBackRowRatePct:round(pct(ranged.back,ranged.summons)),aiBackRowRatePct:null,note:'AI後列率はVer.0.37集計に未収録。新たなAI観測ログなしでは比較しない。'}},limitations:['Humanログは人間側の意思決定を詳細記録するが、CPU側Decision Snapshotは記録していない。類似局面の完全なHuman/AI行動比較、AI遠距離生存・射撃回数、AI進化後成果は比較データなし。','相関は因果を示さない。カード使用時勝率には盤面優勢やドローの選択バイアスがある。']};saveReport(report);return report;
+}
+function makeCandidates(x){let out={balance:[],ai:[],ux:[],fun:[]},push=(k,priority,title,evidence,confidence)=>out[k].push({priority,title,evidence,confidence});
+ for(const [id,v] of Object.entries(x.byClass)){if(v.games>=5&&v.ratePct>=60&&v.aiWinRatePct>=60)push('balance',v.games>=20?'P1':'P2',`${id}はHuman/AI双方で高勝率の可能性`,`${v.wins}/${v.games} (${v.ratePct}%)、AI ${v.aiWinRatePct}%`,v.confidence);if(v.games>=5&&v.differencePctPoints>=12)push('ai',v.games>=20?'P1':'P2',`${id}はAIが扱い切れていない可能性`,`Human ${v.ratePct}% / AI ${v.aiWinRatePct}% / 差 ${v.differencePctPoints}pt / n=${v.games}`,v.confidence)}
+ for(const [id,v] of Object.entries(x.cardMatchWins))if(v.matches>=5&&v.winRatePct>=70)push('balance',v.matches>=20?'P1':'P2',`${v.cardName}の使用試合勝率が高い`,`${v.wins}/${v.matches} (${v.winRatePct}%)。使用選択バイアスあり。`,confidence(v.matches,v.winRatePct-50));
+ for(const [id,v] of Object.entries(x.detailOut))if(v.matches>=3&&v.perMatch>=.8)push('ux','P2',`${v.cardName}は能力確認が多い`,`詳細${v.opens}回 / ${x.valid.length}試合、進化後タブ${v.evolvedTab}回`,confidence(v.matches));
+ for(const [id,v] of Object.entries(x.timeCard))if(v.count>=3&&v.medianMs>=8000)push('ux','P2',`${v.cardName}で判断時間が長い`,`中央値 ${(v.medianMs/1000).toFixed(1)}秒 / n=${v.count}。戦略的難しさとUI理解を要観察。`,confidence(v.count));
+ let cancels=x.cancel.cancel+x.cancel.dragCancel,totalSummons=x.summon.drag+x.summon.click;if(cancels>=3)push('ux',cancels>=10?'P1':'P2','キャンセル操作が繰り返されている',`通常${x.cancel.cancel} / drag ${x.cancel.dragCancel}`,confidence(cancels));
+ if(x.ranged.summons>=5&&pct(x.ranged.back,x.ranged.summons)>=50)push('ai','P2','人間は遠距離を後列で活用している可能性',`後列 ${x.ranged.back}/${x.ranged.summons} (${round(pct(x.ranged.back,x.ranged.summons))}%)。AI後列率の追加計測が必要。`,confidence(x.ranged.summons));
+ if(x.survey.playAgain.total>=5&&x.survey.playAgain.ratePct<50)push('fun','P1','Play Again率が低い',`${x.survey.playAgain.yes}/${x.survey.playAgain.total} (${x.survey.playAgain.ratePct}%)`,confidence(x.survey.playAgain.total,50-x.survey.playAgain.ratePct));
+ if(x.survey.fun.mean!=null&&x.survey.fun.mean<3)push('fun','P1','楽しさ評価が低い可能性',`平均 ${x.survey.fun.mean}/5、n=${x.survey.fun.length||x.survey.responses}`,confidence(x.survey.responses));
+ if(x.valid.length<20)push('balance','P2','Human sample is still small',`${x.valid.length}試合。カード調整の根拠には不足。`,'データ不足');
+ return out}
+function saveReport(report){try{let db=JSON.parse(localStorage.getItem(REPORT_KEY)||'{"reports":[]}');db.reports.unshift(report);db.reports=db.reports.slice(0,20);localStorage.setItem(REPORT_KEY,JSON.stringify(db))}catch{}}
+function loadReports(){try{return JSON.parse(localStorage.getItem(REPORT_KEY)||'{"reports":[]}')}catch{return{reports:[]}}}
+function imitation(matches,filters={}){let rows=[];for(const m of filter(matches,filters).filter(m=>m.result))for(const d of m.decisions||[])rows.push({matchId:m.matchId,testerId:m.testerId,version:{gameVersion:m.gameVersion,cardSetVersion:m.cardSetVersion,coreVersion:m.coreVersion,logSchemaVersion:m.logSchemaVersion},stateFeatures:d.state,legalActions:d.legalActions||[],chosenAction:d.chosenAction,outcome:d.outcome||[],result:m.result.humanResult});return{schema:'tactics7-human-imitation-0.42',generatedAt:new Date().toISOString(),samples:rows}}
+function download(data,name){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+window.HumanAutoAnalyst={analyze,versions,filter,imitation,download,loadReports,confidence};
+})();
