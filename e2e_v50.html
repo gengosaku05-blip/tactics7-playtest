@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><title>TACTICS 7 Ver.0.50 Production E2E</title>
+<pre id="out">RUNNING</pre><iframe id="game" src="index.html?playtest=1&test=1" style="width:1366px;height:768px"></iframe>
+<script>
+localStorage.clear();
+const out=document.getElementById('out'),frame=document.getElementById('game'),wait=ms=>new Promise(r=>setTimeout(r,ms));
+const click=(d,q)=>{let el=d.querySelector(q);if(!el)throw Error('missing '+q);el.click();return el};
+frame.onload=async()=>{try{
+  await wait(900);let w=frame.contentWindow,d=frame.contentDocument,steps=[];
+  d.querySelector('#testerId').value='E2E-Ver050-'+Date.now();click(d,'#testerStart');steps.push('tester');
+  click(d,'#consentPlay');await wait(100);steps.push('consent');
+  click(d,'[data-go="decks"]');click(d,'#v50new');click(d,'[data-class="Kingdom"]');steps.push('lobby-decks-new-class');
+  for(let guard=0;w.DeckBuilderV50.editing.cards.length<20&&guard++<50;){let add=[...d.querySelectorAll('[data-add]')].find(x=>!x.disabled);if(!add)throw Error('no add button at '+w.DeckBuilderV50.editing.cards.length);add.click()}
+  if(w.DeckBuilderV50.editing.cards.length!==20)throw Error('deck count '+w.DeckBuilderV50.editing.cards.length);
+  click(d,'#v50save');let saved=w.DeckStoreV49.read().find(x=>x.cards.length===20);if(!saved)throw Error('deck not saved');steps.push('20-build-save');
+  click(d,`[data-use="${saved.deckId}"]`);click(d,'#v50start');await wait(100);steps.push('custom-cpu-start');
+  let g=w.__tacticsTest.game;g.mulligan('player',[]);g.mulligan('cpu',[]);w.HumanPlaytest.initialHands(g,[]);
+  let ply=0;while(!g.winner&&ply++<60){let side=g.turn,n=0;while(!g.winner&&n++<40){let a=w.CoreAI.choose(g,side,'Balanced','Strong');if(!a)break;if(side==='player')w.HumanPlaytest.decision(g);if(!w.CoreAI.apply(g,side,a))break;if(side==='player')w.HumanPlaytest.commit(g,{message:a.type,inputMethod:a.type==='summon'?'click':undefined})}if(!g.winner){if(g.pending)g.resolvePending(null);if(side==='player')w.HumanPlaytest.decision(g);g.endTurn();if(side==='player')w.HumanPlaytest.commit(g,{message:'turn'})}}
+  w.HumanPlaytest.finish(g,g.winner?'commanderDown':'e2eCutoff');w.HumanPlaytest.survey({fun:4,clarity:4,playAgain:'yes',comment:'production e2e'});steps.push('finish-survey');
+  let match=w.HumanPlaytest.active;for(let i=0;i<40&&w.PlaytestCloud.status(match.matchId)!=='synced';i++)await wait(250);
+  let result={pass:w.PlaytestCloud.status(match.matchId)==='synced',steps,matchId:match.matchId,syncStatus:w.PlaytestCloud.status(match.matchId),gameVersion:match.gameVersion,cardSetVersion:match.cardSetVersion,logSchemaVersion:match.logSchemaVersion,custom:match.human.isCustomDeck,deckCount:match.human.deckList.length,result:match.result};
+  out.textContent=JSON.stringify(result);
+}catch(e){out.textContent=JSON.stringify({pass:false,error:String(e),stack:e.stack})}};
+</script>
