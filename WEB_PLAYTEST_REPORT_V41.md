@@ -32,7 +32,12 @@
 - Ver.0.41 consent/UI: 6項目すべてPASS（844×390）
 - Ver.0.40 drag/logger回帰: 16項目すべてPASS（1600×900、1366×768、844×390）
 - 静的配信対象に `/Users/gengo` や `file://` 依存なし
+- 公開PLAYTESTで実試合を完走し、`matchId: PT-mu87pjq9-8se1` を `synced` として保存
+- 管理者取得APIで同じmatchId、`source: human_playtest`、Ver.0.41、Decision 48件を照合
+- GitHub Pages: `https://gengosaku05-blip.github.io/tactics7-playtest/`
+- 友達用URL: `https://gengosaku05-blip.github.io/tactics7-playtest/?playtest=1`
+- CORE LAB: `https://gengosaku05-blip.github.io/tactics7-playtest/core_lab.html`
 
-## 残る手動作業
+## 運用時の手動作業
 
-Supabase project作成、schema適用、Function deploy、secret設定、公開anon設定、GitHub Pages有効化はアカウント所有者の操作が必要です。実サービスへの最終疎通はこれらの設定後に行います。
+友達にはPLAYTEST URLだけを送ります。CORE LABでクラウド取得するときだけ、macOS Keychainに保存した管理者tokenを入力します。ゲーム、72カード、12デッキ、Core、AI、バランスは変更していません。

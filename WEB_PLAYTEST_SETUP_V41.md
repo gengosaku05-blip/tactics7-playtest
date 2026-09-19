@@ -47,6 +47,18 @@ anon keyは公開クライアント用です。`service_role` keyと管理者tok
 
 ## 3. GitHub Pagesで公開
 
+現在の公開先:
+
+```text
+https://gengosaku05-blip.github.io/tactics7-playtest/
+```
+
+友達へ送るPLAYTEST URL:
+
+```text
+https://gengosaku05-blip.github.io/tactics7-playtest/?playtest=1
+```
+
 このフォルダをリポジトリの公開対象にした上で、次のどちらかを使います。
 
 1. GitHub repository → Settings → Pages を開きます。
@@ -114,4 +126,4 @@ tokenはlocalStorageへ保存されません。公開Pages上のCORE LABファ�
 - `test_v41_ui.html`: Tester ID、同意、844×390、通常ホーム、研究用語非表示
 - `test_v40_drag.html`: 1600×900 / 1366×768 / 844×390のdrag/click/touch/H2/logger回帰
 
-実Supabaseへの本番疎通だけは、project URL・anon key・secret設定後に1試合完走してDashboardとCORE LABの両方で確認します。
+実Supabaseへの本番疎通も完了しています。公開ページで1試合を完走し、ローカル保存、クラウド同期、管理者取得APIで同一matchIdと48件のDecision Logを照合しました。
