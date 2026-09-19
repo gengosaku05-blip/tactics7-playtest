@@ -230,3 +230,44 @@ body.coreNoCenter #centerInfo{display:none}body.coreNoCenter .cell.center{box-sh
 }
 
 .candidateBanner{position:fixed;z-index:10000;top:0;left:0;right:0;padding:.35rem .7rem;text-align:center;background:#7b2d8e;color:#fff;font-weight:800;letter-spacing:.04em}.candidateMode .arena{padding-top:2rem}
+
+/* Ver.0.45: iOS landscape Safe Area. Background fills the screen; controls stay inside. */
+:root{--safe-left:var(--safe-area-test-left,env(safe-area-inset-left,0px));--safe-right:var(--safe-area-test-right,env(safe-area-inset-right,0px));--safe-top:var(--safe-area-test-top,env(safe-area-inset-top,0px));--safe-bottom:var(--safe-area-test-bottom,env(safe-area-inset-bottom,0px));--safe-width:calc(100vw - var(--safe-left) - var(--safe-right));--safe-mid-x:calc(var(--safe-left) + var(--safe-width)/2);--app-height:var(--visual-viewport-height,100dvh)}
+html,body{min-height:100%;height:100%;overscroll-behavior:none}.arena{width:100%;height:100vh;height:100svh;height:var(--app-height);min-height:0;max-width:none;padding:0;background-color:#07131f}
+.arenaTop{left:var(--safe-left);right:var(--safe-right);top:var(--safe-top);padding-left:6px;padding-right:6px}
+.field{left:var(--safe-left);right:var(--safe-right);top:var(--safe-top);bottom:var(--safe-bottom)}
+.battleCenter{left:50%}
+.status{left:calc(var(--safe-left) + 10px)}
+.enemyStatus{top:calc(var(--safe-top) + 34px)}.playerStatus{bottom:calc(var(--safe-bottom) + 105px)}
+.objective{left:10px}
+.fieldRight{right:10px}
+.hint{left:calc(var(--safe-mid-x) + var(--grid-size)/2 + 12px);width:min(205px,calc((var(--safe-width) - var(--grid-size))/2 - 35px))}
+.handDock{left:var(--safe-left);right:var(--safe-right);bottom:var(--safe-bottom)}
+.hand{width:min(calc(var(--safe-width) - 290px),840px)}
+.handInfo{right:calc(var(--safe-right) + 17px)}
+.decision,.beginnerGuide,.turnBanner,.toast{left:var(--safe-mid-x)}
+.decision{width:min(460px,calc(var(--safe-width) - 250px));bottom:calc(var(--safe-bottom) + 108px)}
+.beginnerGuide{width:min(520px,calc(var(--safe-width) - 24px));bottom:calc(var(--safe-bottom) + 108px)}
+.overlay{padding:calc(var(--safe-top) + 8px) calc(var(--safe-right) + 8px) calc(var(--safe-bottom) + 8px) calc(var(--safe-left) + 8px)}
+.utilityOverlay{right:calc(var(--safe-right) + 10px);top:calc(var(--safe-top) + 50px);max-width:calc(var(--safe-width) - 20px);max-height:calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 60px)}
+.cardPreview,.cardDetailPanel{max-width:calc(var(--safe-width) - 16px)}
+.candidateBanner{padding-left:calc(var(--safe-left) + .7rem);padding-right:calc(var(--safe-right) + .7rem)}
+.safeAreaDebug:after{content:'SAFE AREA';position:fixed;z-index:99999;pointer-events:none;left:var(--safe-left);right:var(--safe-right);top:var(--safe-top);bottom:var(--safe-bottom);border:2px dashed #66ffb3;box-shadow:0 0 0 100vmax #ff38551a inset;color:#66ffb3;font:700 9px system-ui;padding:2px}
+
+@media(max-height:500px) and (orientation:landscape){
+ .arena{--grid-size:min(calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 107px),calc(var(--safe-width) - 225px))}
+ .arenaTop{left:var(--safe-left);right:var(--safe-right);top:var(--safe-top);padding:0 3px}
+ .brand{font-size:11px}.brand small{font-size:7px;margin-left:3px}.phase{font-size:8px}.topActions{gap:2px}.topActions button{font-size:0;min-width:28px;height:23px;padding:2px}.topActions button:before{font-size:12px}.topActions #cardDetailToggle:before{content:'▣'}.topActions #infoToggle:before{content:'ⓘ'}.topActions #logToggle:before{content:'≡'}.topActions #graveToggle:before{content:'♙'}.topActions #debugToggle:before{content:'⚙'}.topActions #newGame:before{content:'↻'}
+ .battleCenter{left:50%;top:calc(26px + var(--grid-size)/2)}
+ .status{left:calc(var(--safe-left) + 3px);width:110px;height:96px;padding:2px 3px}.enemyStatus{top:calc(var(--safe-top) + 27px)}.playerStatus{bottom:calc(var(--safe-bottom) + 47px)}
+ .objective{left:3px;max-width:110px}
+ .fieldRight{right:3px;width:100px}.fieldRight .endTurn{min-height:30px;touch-action:manipulation}
+ .hint{top:calc(var(--safe-top) + 31px);left:calc(var(--safe-mid-x) + var(--grid-size)/2 + 5px);width:calc((var(--safe-width) - var(--grid-size))/2 - 112px)}
+ .handDock{left:var(--safe-left);right:var(--safe-right);bottom:var(--safe-bottom);height:47px}.hand{width:min(calc(var(--safe-width) - 220px),390px);max-width:none;padding:0 3px}
+ .hand[data-count="7"]{--card-width:43px}.hand[data-count="7"] .card:not(:first-child){margin-left:-4px}.hand .card{min-width:38px}.hand .cardCost{display:grid}
+ .handInfo{right:calc(var(--safe-right) + 4px)}
+ .decision{left:var(--safe-mid-x);bottom:calc(var(--safe-bottom) + 51px);width:min(380px,calc(var(--safe-width) - 140px))}
+ .beginnerGuide{left:var(--safe-mid-x);bottom:calc(var(--safe-bottom) + 49px);width:min(430px,calc(var(--safe-width) - 220px))}
+ .utilityOverlay{right:calc(var(--safe-right) + 4px);top:calc(var(--safe-top) + 27px);width:min(350px,calc(var(--safe-width) - 8px));max-height:calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 32px)}
+ .cardDetailPanel{left:auto}.cardPreview{width:min(475px,calc(var(--safe-width) - 136px));max-height:calc(var(--app-height) - var(--safe-top) - var(--safe-bottom) - 30px)}
+}

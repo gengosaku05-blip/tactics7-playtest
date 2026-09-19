@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8"><title>Ver.0.45 Safe Area tests</title>
+<style>body{margin:0;background:#111;color:#fff;font:12px monospace}iframe{position:absolute;left:-10000px;width:844px;height:390px;border:0}pre{white-space:pre-wrap}</style><pre id="out">running</pre>
+<script>
+(async()=>{const cases=[['A',844,390,47,0],['B',844,390,0,47],['C',844,390,47,21],['D',844,390,0,0],['PC-1366',1366,768,0,0],['PC-1600',1600,900,0,0]],results=[];
+const wait=ms=>new Promise(r=>setTimeout(r,ms)),check=(name,pass,detail='')=>results.push({name,pass:!!pass,detail});
+for(const [name,width,height,left,right] of cases){let f=document.createElement('iframe');f.style.width=width+'px';f.style.height=height+'px';f.src=`index.html?test=1&safeLeft=${left}&safeRight=${right}`;document.body.appendChild(f);await new Promise(r=>f.onload=r);await wait(80);let w=f.contentWindow,d=f.contentDocument,t=w.__tacticsTest;t.start('p1_Kingdom_Midrange','p1_Forest_Mobility');d.getElementById('mulliganDone').click();await wait(80);while(t.game.sides.player.hand.length<7)t.game.draw('player');t.render();await wait(40);
+ const inside=(el)=>{let r=el.getBoundingClientRect();return r.left>=left-0.6&&r.right<=width-right+0.6&&r.top>=-0.6&&r.bottom<=height+0.6};
+ let board=d.getElementById('board'),br=board.getBoundingClientRect(),hand=[...d.querySelectorAll('#hand .card')],costs=[...d.querySelectorAll('#hand .cardCost')];
+ check(`${name} board 7x7`,d.querySelectorAll('#board .cell').length===49&&inside(board)&&Math.abs(br.width-br.height)<1,`${br.left.toFixed(1)}..${br.right.toFixed(1)} / ${br.width.toFixed(1)}`);
+ check(`${name} commanders/resources`,inside(d.getElementById('cpuStatus'))&&inside(d.getElementById('playerStatus'))&&d.querySelectorAll('.resource.energy,.resource.ep').length===4);
+ check(`${name} hand 7 + costs`,hand.length===7&&hand.every(inside)&&costs.length===7&&costs.every(x=>x.getBoundingClientRect().width>0));
+ let rr=d.querySelector('.fieldRight').getBoundingClientRect(),er=d.getElementById('endTurn').getBoundingClientRect();
+ check(`${name} right controls`,inside(d.querySelector('.fieldRight'))&&inside(d.getElementById('endTurn'))&&er.width>=40&&er.height>=28,`panel ${rr.left.toFixed(1)},${rr.top.toFixed(1)}..${rr.right.toFixed(1)},${rr.bottom.toFixed(1)} end ${er.left.toFixed(1)},${er.top.toFixed(1)}..${er.right.toFixed(1)},${er.bottom.toFixed(1)}`);
+ let tr=d.querySelector('.arenaTop').getBoundingClientRect(),bad=[...d.querySelectorAll('.topActions button')].filter(x=>x.getClientRects().length&&!inside(x)).map(x=>{let r=x.getBoundingClientRect();return `${x.id}:${r.left.toFixed(1)}..${r.right.toFixed(1)}`});
+ check(`${name} top controls`,inside(d.querySelector('.arenaTop'))&&bad.length===0,`top ${tr.left.toFixed(1)}..${tr.right.toFixed(1)} bad ${bad.join(',')}`);
+ check(`${name} evolution/detail/logger`,inside(d.getElementById('evolve'))&&!!w.CardCatalog&&!!w.HumanPlaytest&&getComputedStyle(d.documentElement).getPropertyValue('--visual-viewport-height').trim()!=='');
+ if(name==='A'){f.style.width='900px';w.dispatchEvent(new Event('orientationchange'));w.dispatchEvent(new Event('resize'));await wait(40);check('orientationchange recalculates viewport',parseFloat(getComputedStyle(d.documentElement).getPropertyValue('--visual-viewport-width'))>=899)}
+ f.remove();}
+check('all target viewports exercised',cases.length===6&&results.length===37);document.getElementById('out').textContent=JSON.stringify({passed:results.filter(x=>x.pass).length,total:results.length,results},null,2)})().catch(e=>document.getElementById('out').textContent=JSON.stringify({error:String(e),stack:e.stack}));
+</script>

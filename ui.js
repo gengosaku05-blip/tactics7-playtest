@@ -1,6 +1,9 @@
 (function(){'use strict';
 const R=window.RULES,C=R.classes,K=R.cards,$=id=>document.getElementById(id);
 let game,selected=null,cardIndex=null,mode='move',playtestTesterId=localStorage.getItem('tactics7_tester_id')||'Tester-001',flow=null,decision=null,cpuBusy=false,toastTimer,bannerTimer,lastUnlock=false,resultShown=false,cardArmed=false,detailOpen=false,evolveMode=false,cardDrag=null;
+const viewportParams=new URLSearchParams(location.search);
+function updateViewportMetrics(){let root=document.documentElement,v=window.visualViewport;root.style.setProperty('--visual-viewport-width',`${v?.width||innerWidth}px`);root.style.setProperty('--visual-viewport-height',`${v?.height||innerHeight}px`);if(viewportParams.has('test')||viewportParams.get('dev')==='1'){for(const [q,n] of [['safeLeft','--safe-area-test-left'],['safeRight','--safe-area-test-right'],['safeTop','--safe-area-test-top'],['safeBottom','--safe-area-test-bottom']])if(viewportParams.has(q))root.style.setProperty(n,`${Math.max(0,+viewportParams.get(q)||0)}px`)}document.body.classList.toggle('safeAreaDebug',viewportParams.get('safeArea')==='1'&&viewportParams.get('dev')==='1')}
+updateViewportMetrics();addEventListener('resize',updateViewportMetrics,{passive:true});addEventListener('orientationchange',()=>requestAnimationFrame(updateViewportMetrics),{passive:true});window.visualViewport?.addEventListener('resize',updateViewportMetrics,{passive:true});
 const name=s=>s==='player'?'あなた':'CPU', unit=id=>game.units.find(u=>u.id===id), coord=p=>String.fromCharCode(65+p.x)+(7-p.y), eq=(a,b)=>a.x===b.x&&a.y===b.y;
 const sickStatus=()=>game.config.summonTempo==='oneStep'?'召喚ターン：1マス移動可 / 攻撃不可':game.config.summonTempo==='moveOnly'?'召喚ターン：通常移動可 / 攻撃不可':'召喚酔い：移動・攻撃不可';
 const unique=(items,key)=>[...new Map(items.map(v=>[key(v),v])).values()];
